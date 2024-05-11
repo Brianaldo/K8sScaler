@@ -62,9 +62,9 @@ class PrometheusClient(object):
         return PrometheusClient.prom.custom_query(query=query)
 
     def fetch_workload(
-        start_time = parse_datetime("1d"),
-        end_time = parse_datetime("now"),
-        chunk_size = timedelta(minutes=2)
+        start_time=parse_datetime("1d"),
+        end_time=parse_datetime("now"),
+        chunk_size=timedelta(minutes=2)
     ):
         query = \
             """
