@@ -8,7 +8,7 @@ class RPSPredictor(object):
 
     @staticmethod
     def predict(past_values: np.ndarray) -> np.ndarray:
-        assert past_values.shape == (720, 7), "Array size is not (720, 7)"
+        assert past_values.shape == (1440, 7), "Array size is not (1440, 7)"
 
         outputs = RPSPredictor.model(
             past_values=torch.tensor(
