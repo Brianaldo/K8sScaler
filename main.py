@@ -1,5 +1,6 @@
 import time
 import math
+import traceback
 
 import numpy as np
 
@@ -11,38 +12,73 @@ from predictor.lat_predictor.model import LatPredictor
 
 class Controller(object):
     INTERVAL = 60
+    SERVICES = ['s0', 's1', 's2', 's3', 's4', 's5', 's6']
+    LAT_THRESHOLD = {
+        's0': 300,
+        's1': 150,
+        's2': 30,
+        's3': 50,
+        's4': 100,
+        's5': 50,
+        's6': 20
+    }
 
     @staticmethod
     def scaling_strategy(
         current_num_pod: int,
-        current_latency: float,
+        forecasted_latency: float,
         threshold_latency: float
     ) -> int:
-        return math.ceil(current_num_pod * math.floor(current_latency / threshold_latency * 100) / 100)
+        return math.ceil(current_num_pod * math.floor(forecasted_latency / threshold_latency * 100) / 100)
 
-    @staticmethod
+    @ staticmethod
     def run():
         while True:
+            Controller.scale()
             time.sleep(Controller.INTERVAL)
 
-    @staticmethod
-    def test():
-        print("#### PROMETHEUS ####")
+    @ staticmethod
+    def scale():
+        try:
+            rps = PrometheusClient.fetch_workload()
+            rps = np.array([
+                rps[service][:1440] for service in Controller.SERVICES
+            ]).transpose()
+            rps = {
+                f's{i}': item
+                for i, item
+                in enumerate(RPSPredictor.predict(rps).transpose().tolist())
+            }
 
-        print(PrometheusClient.fetch_cpu_usage())
-        print(PrometheusClient.fetch_pod_count())
-        print(PrometheusClient.fetch_workload())
+            cpu = PrometheusClient.fetch_cpu_usage()
+            pod = PrometheusClient.fetch_pod_count()
+            lat = {
+                service: LatPredictor.predict(
+                    service=service,
+                    pod=pod.get(service) or 1,
+                    cpu=cpu.get(service) or 0,
+                    rps=rps[service][0]
+                ) for service in Controller.SERVICES
+            }
 
-        print("#### KUBERNETES ####")
+            for service in Controller.SERVICES:
+                if cpu.get(service) is None:
+                    continue
 
-        print(K8sClient.get_deployment_info("s0"))
+                target_replicas = Controller.scaling_strategy(
+                    current_num_pod=pod[service],
+                    forecasted_latency=lat[service],
+                    threshold_latency=Controller.LAT_THRESHOLD[service]
+                )
 
-        print("#### PREDICTORS ####")
-
-        print(RPSPredictor.predict(np.array([[0 for _ in range(7)] for _ in range(1440)])))
-        print(LatPredictor.predict(service="s0", pod="1", cpu="0.5", rps="10"))
+                if target_replicas != pod[service]:
+                    K8sClient.scale_deployment(
+                        deployment_name=service,
+                        replicas=target_replicas
+                    )
+        except Exception:
+            print("[ERROR]", traceback.format_exc())
 
 
 if __name__ == '__main__':
-    Controller.test()
     Controller.run()
