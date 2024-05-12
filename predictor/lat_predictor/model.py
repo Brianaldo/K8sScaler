@@ -7,10 +7,12 @@ import pandas as pd
 
 class LatPredictor(object):
     pipeline = joblib.load(
-        os.path.join(os.path.dirname(__file__), 'preprocessor/lat-tot-v1.joblib')
+        os.path.join(
+            os.path.dirname(__file__), 'preprocessor/lat-tot-v2.joblib'
+        )
     )
     model = load_model(
-         os.path.join(os.path.dirname(__file__), 'model/lat-tot-v1.keras')
+        os.path.join(os.path.dirname(__file__), 'model/lat-tot-v2.keras')
     )
 
     @staticmethod
