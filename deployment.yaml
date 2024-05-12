@@ -4,6 +4,66 @@ metadata:
   name: k8s-scaler
   labels:
     name: k8s-scaler
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: k8s-scaler-sa
+  namespace: k8s-scaler
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: deployment-manager
+  namespace: k8s-scaler
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: deployment-manager-binding
+  namespace: k8s-scaler
+subjects:
+  - kind: ServiceAccount
+    name: k8s-scaler-sa
+    namespace: k8s-scaler
+roleRef:
+  kind: Role
+  name: deployment-manager
+  apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: deployment-manager-default
+  namespace: default
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: deployment-manager-binding-default
+  namespace: default
+subjects:
+  - kind: ServiceAccount
+    name: k8s-scaler-sa
+    namespace: k8s-scaler
+roleRef:
+  kind: Role
+  name: deployment-manager-default
+  apiGroup: rbac.authorization.k8s.io
+
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -20,6 +80,7 @@ spec:
       labels:
         app: k8s-scaler
     spec:
+      serviceAccountName: k8s-scaler-sa
       containers:
         - name: k8s-scaler
           image: brianaldo/k8s-scaler:latest
