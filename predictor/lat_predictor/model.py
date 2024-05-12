@@ -1,11 +1,17 @@
+import os
+
 from tensorflow.keras.models import load_model
 import joblib
 import pandas as pd
 
 
 class LatPredictor(object):
-    model = load_model('./model/11-05-2024-total')
-    pipeline = joblib.load('./preprocessor/11-05-2024-total.joblib')
+    pipeline = joblib.load(
+        os.path.join(os.path.dirname(__file__), 'preprocessor/lat-tot-v1.joblib')
+    )
+    model = load_model(
+         os.path.join(os.path.dirname(__file__), 'model/lat-tot-v1.keras')
+    )
 
     @staticmethod
     def predict(

@@ -1,10 +1,14 @@
+import os
+
 import torch
 from transformers import PatchTSTForPrediction
 import numpy as np
 
 
 class RPSPredictor(object):
-    model = PatchTSTForPrediction.from_pretrained("./model")
+    model = PatchTSTForPrediction.from_pretrained(
+        os.path.join(os.path.dirname(__file__), 'model')
+    )
 
     @staticmethod
     def predict(past_values: np.ndarray) -> np.ndarray:
