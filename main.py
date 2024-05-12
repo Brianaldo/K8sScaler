@@ -84,7 +84,7 @@ class Controller(object):
 
                 target_replicas = Controller.scaling_strategy(
                     current_num_pod=pod[service],
-                    forecasted_latency=lat[service],
+                    forecasted_latency=lat[service][0][0],
                     threshold_latency=Controller.LAT_THRESHOLD[service]
                 )
 
