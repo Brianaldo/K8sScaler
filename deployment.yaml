@@ -1,0 +1,27 @@
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: k8s-scaler
+  labels:
+    name: k8s-scaler
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: k8s-scaler
+  namespace: k8s-scaler
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: k8s-scaler
+  template:
+    metadata:
+      labels:
+        app: k8s-scaler
+    spec:
+      containers:
+        - name: k8s-scaler
+          image: brianaldo/k8s-scaler:latest
+          imagePullPolicy: Never
+          tty: true

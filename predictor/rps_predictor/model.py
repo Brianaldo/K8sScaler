@@ -4,7 +4,7 @@ import numpy as np
 
 
 class RPSPredictor(object):
-    model = PatchTSTForPrediction.from_pretrained("./model/finetune/")
+    model = PatchTSTForPrediction.from_pretrained("./model")
 
     @staticmethod
     def predict(past_values: np.ndarray) -> np.ndarray:
