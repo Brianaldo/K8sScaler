@@ -46,7 +46,7 @@ metadata:
   namespace: default
 rules:
   - apiGroups: ["apps"]
-    resources: ["deployments"]
+    resources: ["deployments", "deployments/scale"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
 
 ---
