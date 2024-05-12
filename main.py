@@ -1,13 +1,28 @@
 import time
 import math
 import traceback
+import os
 
 import numpy as np
+import pandas as pd
 
 from prometheus.client import PrometheusClient
 from k8s.client import K8sClient
 from predictor.rps_predictor.model import RPSPredictor
 from predictor.lat_predictor.model import LatPredictor
+
+rps_df = pd.read_csv(os.path.join(os.path.dirname(__file__), 'data/rps.csv'))
+rps_df["Time"] = pd.to_datetime(rps_df['Time'], unit='ms')
+rps_df.set_index("Time", inplace=True)
+rps_df.sort_index(inplace=True)
+rps_df.apply(pd.to_numeric)
+rps_df.iloc[:, 1] = rps_df.iloc[:, 1].astype(float)
+rps_df_len = len(rps_df)
+context_length = 1440
+rps_context_df = rps_df[
+    (rps_df_len - 2 * context_length):(rps_df_len - context_length)
+]
+rps_context = rps_context_df.to_numpy()
 
 
 class Controller(object):
@@ -44,6 +59,8 @@ class Controller(object):
             rps = np.array([
                 rps[service][:1440] for service in Controller.SERVICES
             ]).transpose()
+            rps = rps[np.argmax(rps[:, 0] != 0):]
+            rps = np.vstack((rps_context, rps))[:1440]
             rps = {
                 f's{i}': item
                 for i, item
@@ -81,4 +98,6 @@ class Controller(object):
 
 
 if __name__ == '__main__':
-    Controller.run()
+    # Controller.run()
+    Controller.scale()
+    pass
