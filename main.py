@@ -23,7 +23,6 @@ class Controller(object):
     @staticmethod
     def run():
         while True:
-
             time.sleep(Controller.INTERVAL)
 
     @staticmethod
@@ -45,5 +44,5 @@ class Controller(object):
 
 
 if __name__ == '__main__':
-    # Controller.run()
     Controller.test()
+    Controller.run()
