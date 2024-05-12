@@ -98,6 +98,5 @@ class Controller(object):
 
 
 if __name__ == '__main__':
-    # Controller.run()
-    Controller.scale()
+    Controller.run()
     pass
