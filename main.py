@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 
 from prometheus.client import PrometheusClient
-# from k8s.client import K8sClient
+from k8s.client import K8sClient
 from predictor.rps_predictor.model import RPSPredictor
 from predictor.lat_predictor.model import LatPredictor
 
@@ -90,11 +90,11 @@ class Controller(object):
                     threshold_latency=Controller.LAT_THRESHOLD[service]
                 )
 
-                # if target_replicas != pod[service]:
-                #     K8sClient.scale_deployment(
-                #         deployment_name=service,
-                #         replicas=target_replicas
-                #     )
+                if target_replicas != pod[service]:
+                    K8sClient.scale_deployment(
+                        deployment_name=service,
+                        replicas=target_replicas
+                    )
         except Exception:
             print("[ERROR]", traceback.format_exc())
 
