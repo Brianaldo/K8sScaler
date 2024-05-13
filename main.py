@@ -31,11 +31,11 @@ class Controller(object):
     LAT_THRESHOLD = {
         's0': 300,
         's1': 150,
-        's2': 30,
-        's3': 50,
-        's4': 100,
-        's5': 50,
-        's6': 20
+        's2': 150,
+        's3': 150,
+        's4': 150,
+        's5': 150,
+        's6': 150
     }
 
     @staticmethod
