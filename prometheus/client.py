@@ -63,7 +63,7 @@ class PrometheusClient(object):
         return {item['metric']['group']: int(item['value'][1]) for item in response}
 
     def fetch_workload(
-        start_time=parse_datetime("2024-05-12 23:30:30"),
+        start_time=parse_datetime("2024-05-13 03:05:00"),
         end_time=parse_datetime("now"),
         step="60s",
     ):

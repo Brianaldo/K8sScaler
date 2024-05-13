@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 
 from prometheus.client import PrometheusClient
-from k8s.client import K8sClient
+# from k8s.client import K8sClient
 from predictor.rps_predictor.model import RPSPredictor
 from predictor.lat_predictor.model import LatPredictor
 
@@ -56,8 +56,10 @@ class Controller(object):
     def scale():
         try:
             rps = PrometheusClient.fetch_workload()
+            rps_len = min([len(rps[service])
+                          for service in Controller.SERVICES])
             rps = np.array([
-                rps[service][:1440] for service in Controller.SERVICES
+                rps[service][:min(1440, rps_len)] for service in Controller.SERVICES
             ]).transpose()
             rps = rps[np.argmax(rps[:, 0] != 0):]
             rps = np.vstack((rps_context, rps))[:1440]
@@ -88,11 +90,11 @@ class Controller(object):
                     threshold_latency=Controller.LAT_THRESHOLD[service]
                 )
 
-                if target_replicas != pod[service]:
-                    K8sClient.scale_deployment(
-                        deployment_name=service,
-                        replicas=target_replicas
-                    )
+                # if target_replicas != pod[service]:
+                #     K8sClient.scale_deployment(
+                #         deployment_name=service,
+                #         replicas=target_replicas
+                #     )
         except Exception:
             print("[ERROR]", traceback.format_exc())
 
