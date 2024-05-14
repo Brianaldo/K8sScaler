@@ -86,3 +86,6 @@ spec:
           image: brianaldo/k8s-scaler:latest
           imagePullPolicy: Never
           tty: true
+          ports:
+            - name: http-k8sscalerport
+              containerPort: 8000
