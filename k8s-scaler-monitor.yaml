@@ -7,5 +7,5 @@ spec:
     matchLabels:
       prometheus.io/scrape: "true"
   podMetricsEndpoints:
-    - port: "http-k8sscalerport"
+    - port: "http-scalerport"
       path: "/metrics"
