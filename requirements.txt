@@ -1,6 +1,7 @@
 joblib
 kubernetes 
 prometheus_api_client
+prometheus_client
 scikit-learn
 tensorflow==2.15.0
 torch

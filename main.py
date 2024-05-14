@@ -6,6 +6,8 @@ import os
 import numpy as np
 import pandas as pd
 
+from prometheus_client import start_http_server, Gauge
+
 from prometheus.client import PrometheusClient
 from k8s.client import K8sClient
 from predictor.rps_predictor.model import RPSPredictor
@@ -17,12 +19,20 @@ rps_df.set_index("Time", inplace=True)
 rps_df.sort_index(inplace=True)
 rps_df.apply(pd.to_numeric)
 rps_df.iloc[:, 1] = rps_df.iloc[:, 1].astype(float)
-rps_df_len = len(rps_df)
+
 context_length = 1440
-rps_context_df = rps_df[
-    (rps_df_len - 2 * context_length):(rps_df_len - context_length)
-]
-rps_context = rps_context_df.to_numpy()
+rps_context = rps_df.iloc[-2 * context_length:-context_length].to_numpy()
+
+
+forecasted_rps_gauge = Gauge(
+    'forecasted_rps', 'Forecasted Requests Per Second', ['service']
+)
+forecasted_latency_gauge = Gauge(
+    'forecasted_latency', 'Forecasted Latency', ['service']
+)
+target_replicas_gauge = Gauge(
+    'target_replicas', 'Target Replicas', ['service']
+)
 
 
 class Controller(object):
@@ -37,6 +47,7 @@ class Controller(object):
         's5': 150,
         's6': 150
     }
+    MAXIMUM_POD = 50
 
     @staticmethod
     def scaling_strategy(
@@ -63,7 +74,7 @@ class Controller(object):
             ]).transpose()
             rps = rps[np.argmax(rps[:, 0] != 0):]
             rps = np.vstack((rps_context, rps))[:1440]
-            rps = {
+            forecasted_rps = {
                 f's{i}': item
                 for i, item
                 in enumerate(RPSPredictor.predict(rps).transpose().tolist())
@@ -71,34 +82,47 @@ class Controller(object):
 
             cpu = PrometheusClient.fetch_cpu_usage()
             pod = PrometheusClient.fetch_pod_count()
-            lat = {
+            forecasted_lat = {
                 service: LatPredictor.predict(
                     service=service,
-                    pod=pod.get(service) or 1,
-                    cpu=cpu.get(service) or 0,
-                    rps=rps[service][0]
-                ) for service in Controller.SERVICES
+                    pod=pod.get(service),
+                    cpu=cpu.get(service),
+                    rps=forecasted_rps[service][0]
+                ) for service in Controller.SERVICES if cpu.get(service) is not None
             }
 
-            for service in Controller.SERVICES:
-                if cpu.get(service) is None:
-                    continue
-
-                target_replicas = Controller.scaling_strategy(
+            target_replicas = {
+                service: Controller.scaling_strategy(
                     current_num_pod=pod[service],
-                    forecasted_latency=lat[service][0][0],
+                    forecasted_latency=forecasted_lat[service][0][0],
                     threshold_latency=Controller.LAT_THRESHOLD[service]
-                )
+                ) for service in Controller.SERVICES if cpu.get(service) is not None
+            }
 
+            for service, target_replica in target_replicas.items():
                 if target_replicas != pod[service]:
                     K8sClient.scale_deployment(
                         deployment_name=service,
-                        replicas=target_replicas
+                        replicas=max(target_replica, Controller.MAXIMUM_POD)
                     )
+                    continue
+
+            # Export to Prometheus
+            for service in Controller.SERVICES:
+                forecasted_rps_gauge.labels(
+                    service=service
+                ).set(forecasted_rps[service][0])
+                forecasted_latency_gauge.labels(
+                    service=service
+                ).set(forecasted_lat[service][0][0])
+                target_replicas_gauge.labels(
+                    service=service
+                ).set(target_replicas[service])
+
         except Exception:
             print("[ERROR]", traceback.format_exc())
 
 
 if __name__ == '__main__':
+    start_http_server(8000)
     Controller.run()
-    pass
