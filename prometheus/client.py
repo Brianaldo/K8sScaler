@@ -46,15 +46,16 @@ class PrometheusClient(object):
     def fetch_pod_count():
         query = \
             """
-            count by (group) (
+            count by(group) (
                 label_replace(
-                    kube_pod_info{
-                        namespace="default",
+                    kube_pod_status_ready{
+                        namespace="default", 
+                        condition="true", 
                         pod=~"^s[0-6].*"
-                    }, 
-                    "group", 
-                    "$1", 
-                    "pod", 
+                    },
+                    "group",
+                    "$1",
+                    "pod",
                     "^([a-z0-9]+)-[a-z0-9]+-[a-z0-9]+$"
                 )
             )
