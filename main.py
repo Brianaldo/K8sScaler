@@ -109,15 +109,18 @@ class Controller(object):
 
             # Export to Prometheus
             for service in Controller.SERVICES:
-                forecasted_rps_gauge.labels(
-                    service=service
-                ).set(forecasted_rps[service][0])
-                forecasted_latency_gauge.labels(
-                    service=service
-                ).set(forecasted_lat[service][0][0])
-                target_replicas_gauge.labels(
-                    service=service
-                ).set(target_replicas[service])
+                if forecasted_rps.get(service) is not None:
+                    forecasted_rps_gauge.labels(
+                        service=service
+                    ).set(forecasted_rps[service][0])
+                if forecasted_lat.get(service) is not None:
+                    forecasted_latency_gauge.labels(
+                        service=service
+                    ).set(forecasted_lat[service][0][0])
+                if target_replicas.get(service) is not None:
+                    target_replicas_gauge.labels(
+                        service=service
+                    ).set(target_replicas[service])
 
         except Exception:
             print("[ERROR]", traceback.format_exc())
