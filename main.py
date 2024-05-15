@@ -103,7 +103,7 @@ class Controller(object):
                 if target_replicas != pod[service]:
                     K8sClient.scale_deployment(
                         deployment_name=service,
-                        replicas=max(target_replica, Controller.MAXIMUM_POD)
+                        replicas=min(target_replica, Controller.MAXIMUM_POD)
                     )
                     continue
 
