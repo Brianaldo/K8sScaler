@@ -79,6 +79,10 @@ spec:
     metadata:
       labels:
         app: k8s-scaler
+        prometheus.io/scrape: "true"
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
     spec:
       serviceAccountName: k8s-scaler-sa
       containers:
@@ -88,4 +92,4 @@ spec:
           tty: true
           ports:
             - name: http-scalerport
-              containerPort: 8000
+              containerPort: 8080
