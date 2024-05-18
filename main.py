@@ -70,10 +70,10 @@ class Controller(object):
             rps_len = min([len(rps[service])
                           for service in Controller.SERVICES])
             rps = np.array([
-                rps[service][:min(1440, rps_len)] for service in Controller.SERVICES
+                rps[service][:min(context_length, rps_len)] for service in Controller.SERVICES
             ]).transpose()
             rps = rps[np.argmax(rps[:, 0] != 0):]
-            rps = np.vstack((rps_context, rps))[:1440]
+            rps = np.vstack((rps_context, rps))[-context_length:]
             forecasted_rps = {
                 f's{i}': item
                 for i, item
