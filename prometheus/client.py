@@ -8,7 +8,7 @@ class PrometheusClient(object):
     prom = PrometheusConnect(url=PROMETHEUS_URL, disable_ssl=True)
 
     @staticmethod
-    def fetch_cpu_usage():
+    def fetch_pod_cpu_usage():
         query = \
             """
             (
@@ -43,7 +43,16 @@ class PrometheusClient(object):
         return {item['metric']['group']: float(item['value'][1]) for item in response}
 
     @staticmethod
-    def fetch_pod_count():
+    def fetch_node_cpu_usage():
+        query = \
+            """
+            (100 - (avg(irate(node_cpu_seconds_total{mode="idle"}[1m])) * 100)) / 100
+            """
+        response = PrometheusClient.prom.custom_query(query=query)
+        return {'node': float(response[0]['value'][1])}
+
+    @staticmethod
+    def fetch_ready_pod_count():
         query = \
             """
             count by(group) (
@@ -63,8 +72,28 @@ class PrometheusClient(object):
         response = PrometheusClient.prom.custom_query(query=query)
         return {item['metric']['group']: int(item['value'][1]) for item in response}
 
+    @staticmethod
+    def fetch_pod_count():
+        query = \
+            """
+            count by (group) (
+                label_replace(
+                    kube_pod_info{
+                        namespace="default",
+                        pod=~"^s[0-6].*"
+                    }, 
+                    "group", 
+                    "$1", 
+                    "pod", 
+                    "^([a-z0-9]+)-[a-z0-9]+-[a-z0-9]+$"
+                )
+            )
+            """
+        response = PrometheusClient.prom.custom_query(query=query)
+        return {item['metric']['group']: int(item['value'][1]) for item in response}
+
     def fetch_workload(
-        start_time=parse_datetime("2024-05-15 02:45:00"),
+        start_time=parse_datetime("now-24h"),
         end_time=parse_datetime("now"),
         step="60s",
     ):
