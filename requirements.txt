@@ -2,7 +2,7 @@ joblib
 kubernetes 
 prometheus_api_client
 prometheus_client
-scikit-learn
+scikit-learn==1.2.2
 tensorflow==2.15.0
 torch
 transformers

@@ -4,6 +4,9 @@ from tensorflow.keras.models import load_model
 import joblib
 import pandas as pd
 
+import tensorflow as tf
+tf.get_logger().setLevel('ERROR')
+
 
 class LatPredictor(object):
     PIPELINES = None
@@ -14,7 +17,7 @@ class LatPredictor(object):
         service: str,
         pod: int,
         cpu_node: float,
-        cpu_pod: str,
+        cpu_pod: float,
         rps: float
     ) -> float:
         input_data = pd.DataFrame({
@@ -30,7 +33,7 @@ class LatPredictor(object):
         )
 
         predicted_data = LatPredictor.MODELS[service].predict(
-            input_data
+            input_data, verbose=0
         )
 
         return LatPredictor.PIPELINES['post'][service].inverse_transform(
