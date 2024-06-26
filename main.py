@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 
 from prometheus_client import start_http_server, Gauge
+from prometheus_api_client.utils import parse_datetime
 
 from prometheus.client import PrometheusClient
 from k8s.client import K8sClient
@@ -39,13 +40,13 @@ class Controller(object):
     INTERVAL = 60
     SERVICES = ['s0', 's1', 's2', 's3', 's4', 's5', 's6']
     LAT_THRESHOLD = {
-        's0': 300,
-        's1': 150,
-        's2': 150,
-        's3': 150,
-        's4': 150,
-        's5': 150,
-        's6': 150
+        's0': 200,
+        's1': 100,
+        's2': 100,
+        's3': 100,
+        's4': 100,
+        's5': 100,
+        's6': 100
     }
     MAXIMUM_POD = 25
 
@@ -61,12 +62,13 @@ class Controller(object):
     def run():
         while True:
             Controller.scale()
-            time.sleep(Controller.INTERVAL)
 
     @ staticmethod
     def scale():
         try:
-            rps = PrometheusClient.fetch_workload()
+            rps = PrometheusClient.fetch_workload(
+                start_time=parse_datetime("2024-06-26 15:00:00")
+            )
             rps_len = min([len(rps[service])
                           for service in Controller.SERVICES])
             rps = np.array([
@@ -91,13 +93,13 @@ class Controller(object):
                 pod=[ready_pod[f's{i}'] for i in range(7)],
                 cpu_pod=[pod_cpu[f's{i}'] for i in range(7)],
                 rps=[forecasted_rps[f's{i}'][0] for i in range(7)],
-                cpu_node=node_cpu
+                cpu_node=node_cpu['cpu_node']
             )
 
             target_replicas = {
                 service: Controller.scaling_strategy(
                     current_num_pod=ready_pod[service],
-                    forecasted_latency=forecasted_lat[service][0][0],
+                    forecasted_latency=forecasted_lat[service],
                     threshold_latency=Controller.LAT_THRESHOLD[service]
                 ) for service in Controller.SERVICES
             }
@@ -118,14 +120,16 @@ class Controller(object):
                 if forecasted_lat.get(service) is not None:
                     forecasted_latency_gauge.labels(
                         service=service
-                    ).set(forecasted_lat[service][0][0])
+                    ).set(forecasted_lat[service])
                 if target_replicas.get(service) is not None:
                     target_replicas_gauge.labels(
                         service=service
                     ).set(target_replicas[service] if ready_pod[service] == pod[service] else pod[service])
 
+            time.sleep(Controller.INTERVAL)
         except Exception:
             print("[ERROR]", traceback.format_exc())
+            time.sleep(10)
 
 
 if __name__ == '__main__':

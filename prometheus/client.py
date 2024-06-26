@@ -49,7 +49,7 @@ class PrometheusClient(object):
             (100 - (avg(irate(node_cpu_seconds_total{mode="idle"}[1m])) * 100)) / 100
             """
         response = PrometheusClient.prom.custom_query(query=query)
-        return {'node': float(response[0]['value'][1])}
+        return {'cpu_node': float(response[0]['value'][1])}
 
     @staticmethod
     def fetch_ready_pod_count():
