@@ -67,7 +67,7 @@ class Controller(object):
     def scale():
         try:
             rps = PrometheusClient.fetch_workload(
-                start_time=parse_datetime("2024-06-26 15:00:00")
+                start_time=parse_datetime("2024-06-26 08:00:00")
             )
             rps_len = min([len(rps[service])
                           for service in Controller.SERVICES])
