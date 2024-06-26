@@ -47,7 +47,7 @@ class Controller(object):
         's5': 150,
         's6': 150
     }
-    MAXIMUM_POD = 50
+    MAXIMUM_POD = 25
 
     @staticmethod
     def scaling_strategy(
@@ -80,32 +80,34 @@ class Controller(object):
                 in enumerate(RPSPredictor.predict(rps).transpose().tolist())
             }
 
-            cpu = PrometheusClient.fetch_cpu_usage()
+            node_cpu = PrometheusClient.fetch_node_cpu_usage()
+            pod_cpu = PrometheusClient.fetch_pod_cpu_usage()
+            ready_pod = PrometheusClient.fetch_ready_pod_count()
             pod = PrometheusClient.fetch_pod_count()
-            forecasted_lat = {
-                service: LatPredictor.predict(
-                    service=service,
-                    pod=pod.get(service),
-                    cpu=cpu.get(service),
-                    rps=forecasted_rps[service][0]
-                ) for service in Controller.SERVICES if cpu.get(service) is not None
-            }
+
+            # TODO: Check all of the fetched data is valid
+
+            forecasted_lat = LatPredictor.predict(
+                pod=[ready_pod[f's{i}'] for i in range(7)],
+                cpu_pod=[pod_cpu[f's{i}'] for i in range(7)],
+                rps=[forecasted_rps[f's{i}'][0] for i in range(7)],
+                cpu_node=node_cpu
+            )
 
             target_replicas = {
                 service: Controller.scaling_strategy(
-                    current_num_pod=pod[service],
+                    current_num_pod=ready_pod[service],
                     forecasted_latency=forecasted_lat[service][0][0],
                     threshold_latency=Controller.LAT_THRESHOLD[service]
-                ) for service in Controller.SERVICES if cpu.get(service) is not None
+                ) for service in Controller.SERVICES
             }
 
             for service, target_replica in target_replicas.items():
-                if target_replicas != pod[service]:
+                if ready_pod[service] == pod[service] and target_replicas != ready_pod[service]:
                     K8sClient.scale_deployment(
                         deployment_name=service,
                         replicas=min(target_replica, Controller.MAXIMUM_POD)
                     )
-                    continue
 
             # Export to Prometheus
             for service in Controller.SERVICES:
@@ -120,7 +122,7 @@ class Controller(object):
                 if target_replicas.get(service) is not None:
                     target_replicas_gauge.labels(
                         service=service
-                    ).set(target_replicas[service])
+                    ).set(target_replicas[service] if ready_pod[service] == pod[service] else pod[service])
 
         except Exception:
             print("[ERROR]", traceback.format_exc())

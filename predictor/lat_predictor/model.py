@@ -55,14 +55,13 @@ class LatPredictor(object):
         pod: list[int],
         cpu_pod: list[int],
         rps: list[float],
-        rps_per_pod: list[float],
         cpu_node: int,
     ) -> float:
         input_data = pd.DataFrame({
             **{f's{i}_pod': pod[i] for i in range(7)},
             **{f's{i}_cpu_pod': cpu_pod[i] for i in range(7)},
             **{f's{i}_rps': rps[i] for i in range(7)},
-            **{f's{i}_rps_per_pod': rps_per_pod[i] for i in range(7)},
+            **{f's{i}_rps_per_pod': rps[i] / pod[i] for i in range(7)},
             **{cpu_node: cpu_node},
         }, index=[0])
 
