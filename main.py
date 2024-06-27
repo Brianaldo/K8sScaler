@@ -40,12 +40,12 @@ class Controller(object):
     INTERVAL = 60
     SERVICES = ['s0', 's1', 's2', 's3', 's4', 's5', 's6']
     LAT_THRESHOLD = {
-        's0': 300,
-        's1': 200,
+        's0': 250,
+        's1': 100,
         's2': 100,
         's3': 100,
-        's4': 200,
-        's5': 150,
+        's4': 100,
+        's5': 100,
         's6': 100
     }
     MAXIMUM_POD = 25
@@ -67,7 +67,7 @@ class Controller(object):
     def scale():
         try:
             rps = PrometheusClient.fetch_workload(
-                start_time=parse_datetime("2024-06-26 09:30:00")
+                start_time=parse_datetime("2024-06-26 08:45:00")
             )
             rps_len = min([len(rps[service])
                           for service in Controller.SERVICES])
