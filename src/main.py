@@ -26,7 +26,7 @@ if __name__ == '__main__':
     print(f"✅")
 
     print(f"Starting Exporter...", end="\t\t\t")
-    exporter = Exporter(port=config['modules']['exporter']['port'])
+    exporter = Exporter(port=config['exporter']['port'])
     print(f"✅")
 
     print(f"Starting LatencyPredictorModel...", end="\t")
