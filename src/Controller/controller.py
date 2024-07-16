@@ -1,4 +1,4 @@
-from datetime import datetime, UTC
+from datetime import datetime
 import time
 import math
 import traceback
@@ -45,7 +45,7 @@ class Controller:
             self.context_length = 1440
             self.test_data = self.__prepare_test_data(test_data_path)
             self.fetch_starting_datetime = parse_datetime(
-                datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S")
+                datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             )
 
     def __prepare_test_data(self, test_data_path: str):
