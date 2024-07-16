@@ -106,7 +106,7 @@ class Controller:
             )
 
             target_replicas = {
-                service: self.controller.scaling_strategy(
+                service: self.scaling_strategy(
                     current_num_pod=ready_pod[service],
                     forecasted_latency=predicted_lat[service],
                     threshold_latency=self.services_threshold[service]
@@ -123,7 +123,7 @@ class Controller:
 
             # Export to Prometheus
             if self.exporter:
-                for service in self.controller.SERVICES:
+                for service in self.services:
                     self.exporter.export(
                         service=service,
                         forecasted_rps=forecasted_rps.get(service, [None])[0],
@@ -136,5 +136,5 @@ class Controller:
 
     def run(self):
         while True:
-            self.controller.scale()
+            self.scale()
             time.sleep(self.cooling_down_duration)
