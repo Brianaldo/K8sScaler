@@ -84,7 +84,7 @@ class Controller:
     def scale(self):
         try:
             rps, node_cpu, pod_cpu, ready_pod, pod = attrgetter(
-                self.__fetch_metrics(
+                self.metrics_fetcher.fetch_metrics(
                     parse_datetime=self.fetch_starting_datetime
                 ),
                 'rps', 'node_cpu', 'pod_cpu', 'ready_pod', 'pod'
