@@ -28,7 +28,7 @@ class LatencyPredictorModel:
         cpu_pod: list[int],
         rps: list[float],
         cpu_node: int,
-    ) -> float:
+    ):
         input_data = pd.DataFrame({
             **{f's{i}_pod': pod[i] for i in range(self.target)},
             **{f's{i}_cpu_pod': cpu_pod[i] for i in range(self.target)},

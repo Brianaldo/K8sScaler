@@ -28,7 +28,7 @@ class Exporter:
             ).set(forecasted_rps)
 
         if predicted_lat is not None:
-            self.forecasted_latency_gauge.labels(
+            self.predicted_latency_gauge.labels(
                 service=service
             ).set(predicted_lat)
 

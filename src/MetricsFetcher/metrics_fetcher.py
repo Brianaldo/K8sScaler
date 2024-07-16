@@ -14,11 +14,11 @@ class MetricsFetcher:
     def fetch_metrics(self, fetch_starting_datetime: datetime | None):
         with concurrent.futures.ThreadPoolExecutor() as executor:
             futures = {
-                executor.submit(self.metrics_fetcher.fetch_workload, fetch_starting_datetime): 'rps',
-                executor.submit(self.metrics_fetcher.fetch_node_cpu_usage): 'node_cpu',
-                executor.submit(self.metrics_fetcher.fetch_pod_cpu_usage): 'pod_cpu',
-                executor.submit(self.metrics_fetcher.fetch_ready_pod_count): 'ready_pod',
-                executor.submit(self.metrics_fetcher.fetch_pod_count): 'pod'
+                executor.submit(self.fetch_workload, start_time=fetch_starting_datetime): 'rps',
+                executor.submit(self.fetch_node_cpu_usage): 'node_cpu',
+                executor.submit(self.fetch_pod_cpu_usage): 'pod_cpu',
+                executor.submit(self.fetch_ready_pod_count): 'ready_pod',
+                executor.submit(self.fetch_pod_count): 'pod'
             }
 
             results = {}
@@ -35,7 +35,6 @@ class MetricsFetcher:
     def fetch_pod_cpu_usage(self):
         query = \
             """
-            (
             sum by (group) (
                 label_replace(
                     rate(container_cpu_usage_seconds_total{

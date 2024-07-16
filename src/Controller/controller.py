@@ -1,5 +1,4 @@
-from datetime import datetime
-from operator import attrgetter
+from datetime import datetime, UTC
 import time
 import math
 import traceback
@@ -46,7 +45,7 @@ class Controller:
             self.context_length = 1440
             self.test_data = self.__prepare_test_data(test_data_path)
             self.fetch_starting_datetime = parse_datetime(
-                datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S")
             )
 
     def __prepare_test_data(self, test_data_path: str):
@@ -66,10 +65,10 @@ class Controller:
     def __prepare_rps_data(self, rps):
         rps_len = min([len(rps[service]) for service in self.services])
         rps = np.array([
-            rps[service][:min(context_length, rps_len)] for service in self.services
+            rps[service][:min(self.context_length, rps_len)] for service in self.services
         ]).transpose()
         rps = rps[np.argmax(rps[:, 0] != 0):]
-        rps = np.vstack((rps_context, rps))[-context_length:]
+        rps = np.vstack((self.test_data, rps))[-self.context_length:]
 
         return rps
 
@@ -82,59 +81,63 @@ class Controller:
         return math.ceil(current_num_pod * math.floor(forecasted_latency / threshold_latency * 100) / 100)
 
     def scale(self):
-        try:
-            rps, node_cpu, pod_cpu, ready_pod, pod = attrgetter(
-                self.metrics_fetcher.fetch_metrics(
-                    parse_datetime=self.fetch_starting_datetime
-                ),
-                'rps', 'node_cpu', 'pod_cpu', 'ready_pod', 'pod'
-            )
-            if self.is_test:
-                rps = self.__prepare_rps_data(rps)
+        metrics = self.metrics_fetcher.fetch_metrics(
+            fetch_starting_datetime=self.fetch_starting_datetime
+        )
 
-            forecasted_rps = {
-                f's{i}': item
-                for i, item
-                in enumerate(self.traffic_forecaster_model.predict(rps).transpose().tolist())
-            }
+        rps = metrics['rps']
+        node_cpu = metrics['node_cpu']
+        pod_cpu = metrics['pod_cpu']
+        ready_pod = metrics['ready_pod']
+        pod = metrics['pod']
 
-            predicted_lat = self.latency_predictor_model.predict(
-                pod=[ready_pod[f's{i}'] for i in range(7)],
-                cpu_pod=[pod_cpu[f's{i}'] for i in range(7)],
-                rps=[forecasted_rps[f's{i}'][0] for i in range(7)],
-                cpu_node=node_cpu['cpu_node']
-            )
+        if self.is_test:
+            rps = self.__prepare_rps_data(rps)
 
-            target_replicas = {
-                service: self.scaling_strategy(
-                    current_num_pod=ready_pod[service],
-                    forecasted_latency=predicted_lat[service],
-                    threshold_latency=self.services_threshold[service]
-                ) if ready_pod[service] == pod[service] else pod[service]
-                for service in self.services
-            }
+        forecasted_rps = {
+            f's{i}': item
+            for i, item
+            in enumerate(self.traffic_forecaster_model.predict(rps).transpose().tolist())
+        }
 
-            for service, target_replica in target_replicas.items():
-                if target_replicas != pod[service]:
-                    self.resource_manager.scale_deployment(
-                        deployment_name=service,
-                        replicas=min(target_replica, self.max_target_pod)
-                    )
+        predicted_lat = self.latency_predictor_model.predict(
+            pod=[ready_pod[f's{i}'] for i in range(7)],
+            cpu_pod=[pod_cpu[f's{i}'] for i in range(7)],
+            rps=[forecasted_rps[f's{i}'] for i in range(7)],
+            cpu_node=node_cpu['cpu_node']
+        )
 
-            # Export to Prometheus
-            if self.exporter:
-                for service in self.services:
-                    self.exporter.export(
-                        service=service,
-                        forecasted_rps=forecasted_rps.get(service, [None])[0],
-                        predicted_lat=predicted_lat.get(service),
-                        target_replica=target_replicas.get(service),
-                    )
-        except Exception:
-            print("[ERROR]", traceback.format_exc())
-            time.sleep(10)
+        target_replicas = {
+            service: self.scaling_strategy(
+                current_num_pod=ready_pod[service],
+                forecasted_latency=predicted_lat[service],
+                threshold_latency=self.services_threshold[service]
+            ) if ready_pod[service] == pod[service] else pod[service]
+            for service in self.services
+        }
+
+        for service, target_replica in target_replicas.items():
+            if target_replica != pod[service]:
+                self.resource_manager.scale_deployment(
+                    deployment_name=service,
+                    replicas=min(target_replica, self.max_target_pod)
+                )
+
+        # Export to Prometheus
+        if self.exporter:
+            for service in self.services:
+                self.exporter.export(
+                    service=service,
+                    forecasted_rps=forecasted_rps.get(service),
+                    predicted_lat=predicted_lat.get(service),
+                    target_replica=target_replicas.get(service),
+                )
 
     def run(self):
         while True:
-            self.scale()
-            time.sleep(self.cooling_down_duration)
+            try:
+                self.scale()
+                time.sleep(self.cooling_down_duration)
+            except Exception:
+                print("[ERROR]", traceback.format_exc())
+                time.sleep(10)
