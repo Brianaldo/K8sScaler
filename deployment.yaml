@@ -65,6 +65,44 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
 
 ---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: k8s-scaler-config
+  namespace: k8s-scaler
+data:
+  config.yaml: |
+    modules:
+      controller:
+        cooling_down_duration: 60
+        max_target_pod: 20
+        services:
+          s0: 100
+          s1: 100
+          s2: 100
+          s3: 100
+          s4: 100
+          s5: 100
+          s6: 100
+        is_test: true
+        test_data_path: "data/traffic.csv"
+
+      latency_predictor_model:
+        model_path: "models/latency_predictor_model/v1"
+        num_target: 7
+
+      metrics_fetcher:
+        prometheus_url: "http://prometheus-nodeport.monitoring.svc.cluster.local:9090"
+
+      resource_manager:
+
+      traffic_forecaster_model:
+        model_path: "models/traffic_forecaster_model/v1"
+
+    exporter:
+      port: 8080
+
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -93,3 +131,27 @@ spec:
           ports:
             - name: http-scalerport
               containerPort: 8080
+          volumeMounts:
+            - name: k8s-scaler-config-volume
+              mountPath: /app/config.yaml
+              subPath: config.yaml
+      volumes:
+        - name: k8s-scaler-config-volume
+          configMap:
+            name: k8s-scaler-config
+
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: k8s-scaler-monitor
+  namespace: k8s-scaler
+  labels:
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      prometheus.io/scrape: "true"
+  podMetricsEndpoints:
+    - port: "http-scalerport"
+      path: "/metrics"

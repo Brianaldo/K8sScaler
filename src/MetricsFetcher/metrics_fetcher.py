@@ -1,14 +1,38 @@
+import concurrent.futures
+from datetime import datetime
+
 from prometheus_api_client import PrometheusConnect
 from prometheus_api_client.utils import parse_datetime
 
-from prometheus.config import PROMETHEUS_URL
 
+class MetricsFetcher:
+    def __init__(self, prometheus_url: str):
+        self.prometheus = PrometheusConnect(
+            url=prometheus_url, disable_ssl=True
+        )
 
-class PrometheusClient(object):
-    prom = PrometheusConnect(url=PROMETHEUS_URL, disable_ssl=True)
+    def fetch_metrics(self, fetch_starting_datetime: datetime | None):
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            futures = {
+                executor.submit(self.metrics_fetcher.fetch_workload, fetch_starting_datetime): 'rps',
+                executor.submit(self.metrics_fetcher.fetch_node_cpu_usage): 'node_cpu',
+                executor.submit(self.metrics_fetcher.fetch_pod_cpu_usage): 'pod_cpu',
+                executor.submit(self.metrics_fetcher.fetch_ready_pod_count): 'ready_pod',
+                executor.submit(self.metrics_fetcher.fetch_pod_count): 'pod'
+            }
 
-    @staticmethod
-    def fetch_pod_cpu_usage():
+            results = {}
+            for future in concurrent.futures.as_completed(futures):
+                key = futures[future]
+                try:
+                    results[key] = future.result()
+                except Exception as e:
+                    print(f"An error occurred fetching {key}: {e}")
+                    results[key] = None
+
+        return results
+
+    def fetch_pod_cpu_usage(self):
         query = \
             """
             (
@@ -39,20 +63,18 @@ class PrometheusClient(object):
                 )
             ) * 100 * 0.05
             """
-        response = PrometheusClient.prom.custom_query(query=query)
+        response = self.prometheus.custom_query(query=query)
         return {item['metric']['group']: float(item['value'][1]) for item in response}
 
-    @staticmethod
-    def fetch_node_cpu_usage():
+    def fetch_node_cpu_usage(self):
         query = \
             """
             (100 - (avg(irate(node_cpu_seconds_total{mode="idle"}[1m])) * 100)) / 100
             """
-        response = PrometheusClient.prom.custom_query(query=query)
+        response = self.prometheus.custom_query(query=query)
         return {'cpu_node': float(response[0]['value'][1])}
 
-    @staticmethod
-    def fetch_ready_pod_count():
+    def fetch_ready_pod_count(self):
         query = \
             """
             count by(group) (
@@ -69,11 +91,10 @@ class PrometheusClient(object):
                 )
             )
             """
-        response = PrometheusClient.prom.custom_query(query=query)
+        response = self.prometheus.custom_query(query=query)
         return {item['metric']['group']: int(item['value'][1]) for item in response}
 
-    @staticmethod
-    def fetch_pod_count():
+    def fetch_pod_count(self):
         query = \
             """
             count by (group) (
@@ -89,10 +110,11 @@ class PrometheusClient(object):
                 )
             )
             """
-        response = PrometheusClient.prom.custom_query(query=query)
+        response = self.prometheus.custom_query(query=query)
         return {item['metric']['group']: int(item['value'][1]) for item in response}
 
     def fetch_workload(
+        self,
         start_time=parse_datetime("now-24h"),
         end_time=parse_datetime("now"),
         step="60s",
@@ -108,7 +130,7 @@ class PrometheusClient(object):
                 )
             )
             """
-        response = PrometheusClient.prom.custom_query_range(
+        response = self.prometheus.custom_query_range(
             query=query,
             start_time=start_time,
             end_time=end_time,

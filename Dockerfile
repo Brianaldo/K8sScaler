@@ -2,8 +2,10 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-COPY . /app
+COPY ./src /app/src
+COPY ./models /app/models
+COPY ./data /app/data
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-CMD ["python", "main.py"]
+CMD ["python", "src/main.py"]
