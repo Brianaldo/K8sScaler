@@ -70,4 +70,4 @@ if __name__ == '__main__':
     print(f"✅")
 
     print(f"System is running!")
-    Controller.run()
+    controller.run()
