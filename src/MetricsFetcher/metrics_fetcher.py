@@ -114,8 +114,8 @@ class MetricsFetcher:
 
     def fetch_workload(
         self,
-        start_time: datetime | None,
-        end_time: datetime | None,
+        start_time: datetime = None,
+        end_time: datetime = None,
         step="60s",
     ):
         if start_time is None:
