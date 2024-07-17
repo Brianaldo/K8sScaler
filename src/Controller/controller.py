@@ -105,11 +105,11 @@ class Controller:
         )
 
         target_replicas = {
-            service: self.scaling_strategy(
+            service: min(self.scaling_strategy(
                 current_num_pod=ready_pod[service],
                 forecasted_latency=predicted_lat[service],
                 threshold_latency=self.services_threshold[service]
-            ) if ready_pod[service] == pod[service] else pod[service]
+            ), self.max_target_pod) if ready_pod[service] == pod[service] else pod[service]
             for service in self.services
         }
 
@@ -117,7 +117,7 @@ class Controller:
             if target_replica != pod[service]:
                 self.resource_manager.scale_deployment(
                     deployment_name=service,
-                    replicas=min(target_replica, self.max_target_pod)
+                    replicas=target_replica
                 )
 
         # Export to Prometheus
@@ -125,8 +125,8 @@ class Controller:
             for service in self.services:
                 self.exporter.export(
                     service=service,
-                    forecasted_rps=forecasted_rps.get(service),
-                    predicted_lat=predicted_lat.get(service),
+                    forecasted_traffic=forecasted_rps.get(service),
+                    predicted_latency=predicted_lat.get(service),
                     target_replica=target_replicas.get(service),
                 )
 
