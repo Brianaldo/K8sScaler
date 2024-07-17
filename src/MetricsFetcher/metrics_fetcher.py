@@ -114,10 +114,15 @@ class MetricsFetcher:
 
     def fetch_workload(
         self,
-        start_time=parse_datetime("now-24h"),
-        end_time=parse_datetime("now"),
+        start_time: datetime | None,
+        end_time: datetime | None,
         step="60s",
     ):
+        if start_time is None:
+            start_time = parse_datetime("now-24h")
+        if end_time is None:
+            end_time = parse_datetime("now")
+
         query = \
             """
             sum by (app_name) (

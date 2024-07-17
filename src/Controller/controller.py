@@ -1,4 +1,3 @@
-from datetime import datetime
 import time
 import math
 import traceback
@@ -44,9 +43,7 @@ class Controller:
         if is_test is not None:
             self.context_length = 1440
             self.test_data = self.__prepare_test_data(test_data_path)
-            self.fetch_starting_datetime = parse_datetime(
-                datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            )
+            self.fetch_starting_datetime = parse_datetime("now")
 
     def __prepare_test_data(self, test_data_path: str):
         rps_df = pd.read_csv(test_data_path)
