@@ -18,5 +18,5 @@ class TrafficForecasterModel:
         ).prediction_outputs
         outputs = outputs.squeeze().detach().numpy().transpose().tolist()
 
-        logger.info(f"Forecasted Traffic: {outputs}")
+        logger.info(f"Forecasted Traffic: {[round(data, 2) for data in outputs]}")
         return outputs

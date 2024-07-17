@@ -51,7 +51,8 @@ class LatencyPredictorModel:
             )
         )
 
-        logger.info(f"Predicted latency: {predicted_data[0]}.")
+        logger.info(
+            f"Predicted latency: {[round(data, 2) for data in predicted_data[0]]}.")
 
         return {
             f's{i}': predicted_data[0][i]

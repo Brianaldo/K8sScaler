@@ -13,6 +13,8 @@ from MetricsFetcher import MetricsFetcher
 from ResourceManager import ResourceManager
 from TrafficForecasterModel import TrafficForecasterModel
 
+logger = logging.getLogger("Controller")
+
 
 class Controller:
     def __init__(
@@ -150,7 +152,7 @@ class Controller:
             for service in self.services
         }
 
-        logging.info(
+        logger.info(
             f"Target Replicas: {[target_replica for _, target_replica in target_replicas.items()]}."
         )
 
@@ -175,9 +177,9 @@ class Controller:
         while True:
             try:
                 self.scale()
+                logger.info(f"Cooling down for 60 seconds.")
                 time.sleep(self.cooling_down_duration)
-                logging.info(f"Cooling down for 60 seconds.")
             except Exception as e:
-                logging.error(f"An error occurred: {e}")
-                logging.info(f"Retrying in 10 seconds.")
+                logger.error(f"An error occurred: {e}")
+                logger.info(f"Retrying in 10 seconds.")
                 time.sleep(10)
