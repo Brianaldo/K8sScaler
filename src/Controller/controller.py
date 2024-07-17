@@ -62,14 +62,17 @@ class Controller:
         return traffic_context
 
     def __prepare_traffic_data(self, traffic):
-        traffic_len = min([len(traffic[service]) for service in self.services])
-        traffic = np.array([
-            traffic[service][:min(self.context_length, traffic_len)] for service in self.services
-        ]).transpose()
-        traffic = traffic[np.argmax(traffic[:, 0] != 0):]
-        traffic = np.vstack((self.test_data, traffic))[-self.context_length:]
+        traffic_array = np.array([
+            traffic[service] for service in self.services
+        ]).T
 
-        return traffic
+        non_zero_indices = np.where(~np.all(traffic_array == 0, axis=1))[0]
+        if non_zero_indices.size > 0:
+            trimmed_append_array = traffic_array[non_zero_indices[0]:]
+        else:
+            trimmed_append_array = traffic_array
+
+        return np.vstack((self.test_data, trimmed_append_array))[-self.context_length:]
 
     def scaling_strategy(
         self,
