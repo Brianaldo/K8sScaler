@@ -70,7 +70,7 @@ class Controller:
         if non_zero_indices.size > 0:
             trimmed_append_array = traffic_array[non_zero_indices[0]:]
         else:
-            trimmed_append_array = traffic_array
+            trimmed_append_array = np.zeros((0, traffic_array.shape[1]))
 
         return np.vstack((self.test_data, trimmed_append_array))[-self.context_length:]
 
