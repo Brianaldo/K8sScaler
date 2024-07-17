@@ -1,6 +1,9 @@
+import logging
 import torch
 from transformers import PatchTSTForPrediction
 import numpy as np
+
+logger = logging.getLogger("TrafficForecasterModel")
 
 
 class TrafficForecasterModel:
@@ -13,5 +16,7 @@ class TrafficForecasterModel:
                 past_values, dtype=torch.float32
             ).unsqueeze(0)
         ).prediction_outputs
+        outputs = outputs.squeeze().detach().numpy().transpose().tolist()
 
-        return outputs.squeeze().detach().numpy()
+        logger.info(f"Forecasted Traffic: {outputs}")
+        return outputs

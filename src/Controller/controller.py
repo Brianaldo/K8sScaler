@@ -1,6 +1,6 @@
+import logging
 import time
 import math
-import traceback
 from typing import Dict
 
 import numpy as np
@@ -46,28 +46,28 @@ class Controller:
             self.fetch_starting_datetime = parse_datetime("now")
 
     def __prepare_test_data(self, test_data_path: str):
-        rps_df = pd.read_csv(test_data_path)
-        rps_df["Time"] = pd.to_datetime(rps_df['Time'], unit='ms')
-        rps_df.set_index("Time", inplace=True)
-        rps_df.sort_index(inplace=True)
-        rps_df.apply(pd.to_numeric)
-        rps_df.iloc[:, 1] = rps_df.iloc[:, 1].astype(float)
+        traffic_df = pd.read_csv(test_data_path)
+        traffic_df["Time"] = pd.to_datetime(traffic_df['Time'], unit='ms')
+        traffic_df.set_index("Time", inplace=True)
+        traffic_df.sort_index(inplace=True)
+        traffic_df.apply(pd.to_numeric)
+        traffic_df.iloc[:, 1] = traffic_df.iloc[:, 1].astype(float)
 
-        rps_context = rps_df.iloc[
+        traffic_context = traffic_df.iloc[
             -2 * self.context_length:-self.context_length
         ].to_numpy()
 
-        return rps_context
+        return traffic_context
 
-    def __prepare_rps_data(self, rps):
-        rps_len = min([len(rps[service]) for service in self.services])
-        rps = np.array([
-            rps[service][:min(self.context_length, rps_len)] for service in self.services
+    def __prepare_traffic_data(self, traffic):
+        traffic_len = min([len(traffic[service]) for service in self.services])
+        traffic = np.array([
+            traffic[service][:min(self.context_length, traffic_len)] for service in self.services
         ]).transpose()
-        rps = rps[np.argmax(rps[:, 0] != 0):]
-        rps = np.vstack((self.test_data, rps))[-self.context_length:]
+        traffic = traffic[np.argmax(traffic[:, 0] != 0):]
+        traffic = np.vstack((self.test_data, traffic))[-self.context_length:]
 
-        return rps
+        return traffic
 
     def scaling_strategy(
         self,
@@ -77,30 +77,67 @@ class Controller:
     ) -> int:
         return math.ceil(current_num_pod * math.floor(forecasted_latency / threshold_latency * 100) / 100)
 
-    def scale(self):
-        metrics = self.metrics_fetcher.fetch_metrics(
-            fetch_starting_datetime=self.fetch_starting_datetime
-        )
+    def __check_metrics(self, metrics):
+        def get_missing_keys(dictionary, keys):
+            return [key for key in keys if key not in dictionary]
 
-        rps = metrics['rps']
+        traffic = metrics['traffic']
         node_cpu = metrics['node_cpu']
         pod_cpu = metrics['pod_cpu']
         ready_pod = metrics['ready_pod']
         pod = metrics['pod']
 
-        if self.is_test:
-            rps = self.__prepare_rps_data(rps)
+        if traffic is None:
+            raise Exception(f"Traffic metrics are not present!")
+        if node_cpu is None:
+            raise Exception(f"Node CPU metrics are not present!")
+        if pod_cpu is None:
+            raise Exception(f"Pod CPU metrics are not present!")
+        if ready_pod is None:
+            raise Exception(f"Ready Pod metrics are not present!")
+        if pod is None:
+            raise Exception(f"Pod Count metrics are not present!")
 
-        forecasted_rps = {
+        traffic_missing_keys = get_missing_keys(traffic, self.services)
+        if len(traffic_missing_keys) > 0:
+            raise Exception(
+                f"Some Traffic metrics are missing: {traffic_missing_keys}.")
+        pod_cpu_missing_keys = get_missing_keys(pod_cpu, self.services)
+        if len(pod_cpu_missing_keys) > 0:
+            raise Exception(
+                f"Some Pod CPU metrics are missing: {pod_cpu_missing_keys}.")
+        ready_pod_missing_keys = get_missing_keys(ready_pod, self.services)
+        if len(ready_pod_missing_keys) > 0:
+            raise Exception(
+                f"Some Ready Pod metrics are missing: {ready_pod_missing_keys}.")
+        pod_missing_keys = get_missing_keys(pod, self.services)
+        if len(pod_missing_keys) > 0:
+            raise Exception(
+                f"Some Pod Count metrics are missing: {pod_missing_keys}.")
+
+        return traffic, node_cpu, pod_cpu, ready_pod, pod
+
+    def scale(self):
+        metrics = self.metrics_fetcher.fetch_metrics(
+            fetch_starting_datetime=self.fetch_starting_datetime
+        )
+        traffic, node_cpu, pod_cpu, ready_pod, pod = self.__check_metrics(
+            metrics
+        )
+
+        if self.is_test:
+            traffic = self.__prepare_traffic_data(traffic)
+
+        forecasted_traffic = {
             f's{i}': item
             for i, item
-            in enumerate(self.traffic_forecaster_model.predict(rps).transpose().tolist())
+            in enumerate(self.traffic_forecaster_model.predict(traffic))
         }
 
         predicted_lat = self.latency_predictor_model.predict(
             pod=[ready_pod[f's{i}'] for i in range(7)],
             cpu_pod=[pod_cpu[f's{i}'] for i in range(7)],
-            rps=[forecasted_rps[f's{i}'] for i in range(7)],
+            traffic=[forecasted_traffic[f's{i}'] for i in range(7)],
             cpu_node=node_cpu['cpu_node']
         )
 
@@ -112,6 +149,10 @@ class Controller:
             ), self.max_target_pod) if ready_pod[service] == pod[service] else pod[service]
             for service in self.services
         }
+
+        logging.info(
+            f"Target Replicas: {[target_replica for _, target_replica in target_replicas.items()]}."
+        )
 
         for service, target_replica in target_replicas.items():
             if target_replica != pod[service]:
@@ -125,7 +166,7 @@ class Controller:
             for service in self.services:
                 self.exporter.export(
                     service=service,
-                    forecasted_traffic=forecasted_rps.get(service),
+                    forecasted_traffic=forecasted_traffic.get(service),
                     predicted_latency=predicted_lat.get(service),
                     target_replica=target_replicas.get(service),
                 )
@@ -135,6 +176,8 @@ class Controller:
             try:
                 self.scale()
                 time.sleep(self.cooling_down_duration)
-            except Exception:
-                print("[ERROR]", traceback.format_exc())
+                logging.info(f"Cooling down for 60 seconds.")
+            except Exception as e:
+                logging.error(f"An error occurred: {e}")
+                logging.info(f"Retrying in 10 seconds.")
                 time.sleep(10)

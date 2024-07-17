@@ -1,4 +1,7 @@
+import logging
 from kubernetes import client, config
+
+logger = logging.getLogger("ResourceManager")
 
 
 class ResourceManager:
@@ -12,6 +15,7 @@ class ResourceManager:
         replicas: int,
         namespace: str = 'default'
     ):
+        logger.info(f"Scaling {deployment_name} to {replicas} replica(s).")
         patch_body = {
             "spec": {
                 "replicas": replicas

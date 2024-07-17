@@ -1,9 +1,11 @@
 import concurrent.futures
 from datetime import datetime
+import logging
 
 from prometheus_api_client import PrometheusConnect
 from prometheus_api_client.utils import parse_datetime
 
+logger = logging.getLogger("MetricsFetcher")
 
 class MetricsFetcher:
     def __init__(self, prometheus_url: str):
@@ -12,9 +14,10 @@ class MetricsFetcher:
         )
 
     def fetch_metrics(self, fetch_starting_datetime: datetime | None):
+        logger.info("Fetching metrics from Prometheus Server.")
         with concurrent.futures.ThreadPoolExecutor() as executor:
             futures = {
-                executor.submit(self.fetch_workload, start_time=fetch_starting_datetime): 'rps',
+                executor.submit(self.fetch_traffic, start_time=fetch_starting_datetime): 'traffic',
                 executor.submit(self.fetch_node_cpu_usage): 'node_cpu',
                 executor.submit(self.fetch_pod_cpu_usage): 'pod_cpu',
                 executor.submit(self.fetch_ready_pod_count): 'ready_pod',
@@ -27,7 +30,7 @@ class MetricsFetcher:
                 try:
                     results[key] = future.result()
                 except Exception as e:
-                    print(f"An error occurred fetching {key}: {e}")
+                    logger.error(f"An error occurred fetching {key}: {e}")
                     results[key] = None
 
         return results
@@ -112,7 +115,7 @@ class MetricsFetcher:
         response = self.prometheus.custom_query(query=query)
         return {item['metric']['group']: int(item['value'][1]) for item in response}
 
-    def fetch_workload(
+    def fetch_traffic(
         self,
         start_time: datetime = None,
         end_time: datetime = None,

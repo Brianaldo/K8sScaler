@@ -1,10 +1,10 @@
+import logging
 from tensorflow.keras.models import load_model
 import joblib
 import pandas as pd
 import numpy as np
 
-import tensorflow as tf
-tf.get_logger().setLevel('ERROR')
+logger = logging.getLogger("LatencyPredictorModel")
 
 
 class LatencyPredictorModel:
@@ -24,14 +24,14 @@ class LatencyPredictorModel:
         self,
         pod: list[int],
         cpu_pod: list[int],
-        rps: list[float],
+        traffic: list[float],
         cpu_node: int,
     ):
         input_data = pd.DataFrame({
             **{f's{i}_pod': pod[i] for i in range(self.target)},
             **{f's{i}_cpu_pod': cpu_pod[i] for i in range(self.target)},
-            **{f's{i}_rps': rps[i] for i in range(self.target)},
-            **{f's{i}_rps_per_pod': rps[i] / pod[i] for i in range(self.target)},
+            **{f's{i}_rps': traffic[i] for i in range(self.target)},
+            **{f's{i}_rps_per_pod': traffic[i] / pod[i] for i in range(self.target)},
             **{cpu_node: cpu_node},
         }, index=[0])
 
@@ -50,6 +50,8 @@ class LatencyPredictorModel:
                 )
             )
         )
+
+        logger.info(f"Predicted latency: {predicted_data[0]}.")
 
         return {
             f's{i}': predicted_data[0][i]
