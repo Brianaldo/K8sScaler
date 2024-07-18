@@ -17,6 +17,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger("SYSTEM")
 
+
 def load_config(file_path: str):
     with open(file_path, 'r') as file:
         config = yaml.safe_load(file)
@@ -55,8 +56,9 @@ if __name__ == '__main__':
         max_target_pod=config['modules']['controller']['max_target_pod'],
         services_threshold=config['modules']['controller']['services'],
         exporter=exporter,
-        is_test=config['modules']['controller']['is_test'],
-        test_data_path=config['modules']['controller']['test_data_path']
+        is_test=config['modules']['controller']['test']['is_test'],
+        test_data_path=config['modules']['controller']['test']['data_path'],
+        test_starting_index=config['modules']['controller']['test']['starting_index']
     )
 
     logger.info("System is ready and running!")

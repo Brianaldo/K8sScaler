@@ -28,7 +28,8 @@ class Controller:
         services_threshold: Dict[str, int],
         exporter: None | Exporter = None,
         is_test: bool = False,
-        test_data_path: None | str = None
+        test_data_path: None | str = None,
+        test_starting_index: None | int = None
     ):
         self.latency_predictor_model = latency_predictor_model
         self.metrics_fetcher = metrics_fetcher
@@ -45,6 +46,7 @@ class Controller:
         if is_test is not None:
             self.context_length = 1440
             self.test_data = self.__prepare_test_data(test_data_path)
+            self.test_starting_index = test_starting_index
             self.fetch_starting_datetime = parse_datetime("now")
 
     def __prepare_test_data(self, test_data_path: str):
@@ -56,7 +58,8 @@ class Controller:
         traffic_df.iloc[:, 1] = traffic_df.iloc[:, 1].astype(float)
 
         traffic_context = traffic_df.iloc[
-            -2 * self.context_length:-self.context_length
+            self.test_starting_index:
+            self.test_starting_index + self.context_length
         ].to_numpy()
 
         return traffic_context

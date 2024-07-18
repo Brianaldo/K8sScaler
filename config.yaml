@@ -3,15 +3,17 @@ modules:
     cooling_down_duration: 60
     max_target_pod: 20
     services:
-      s0: 100
-      s1: 100
+      s0: 250
+      s1: 150
       s2: 100
       s3: 100
       s4: 100
       s5: 100
       s6: 100
-    is_test: true
-    test_data_path: "data/traffic.csv"
+    test:
+      is_test: true
+      data_path: "data/traffic.csv"
+      starting_index: 5325
 
   latency_predictor_model:
     model_path: "models/latency_predictor_model/v1"
