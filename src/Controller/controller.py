@@ -45,11 +45,12 @@ class Controller:
         self.is_test = is_test
         if is_test is not None:
             self.context_length = 1440
-            self.test_data = self.__prepare_test_data(test_data_path)
-            self.test_starting_index = test_starting_index
+            self.test_data = self.__prepare_test_data(
+                test_data_path, test_starting_index
+            )
             self.fetch_starting_datetime = parse_datetime("now")
 
-    def __prepare_test_data(self, test_data_path: str):
+    def __prepare_test_data(self, test_data_path: str, test_starting_index: int):
         traffic_df = pd.read_csv(test_data_path)
         traffic_df["Time"] = pd.to_datetime(traffic_df['Time'], unit='ms')
         traffic_df.set_index("Time", inplace=True)
@@ -58,8 +59,7 @@ class Controller:
         traffic_df.iloc[:, 1] = traffic_df.iloc[:, 1].astype(float)
 
         traffic_context = traffic_df.iloc[
-            self.test_starting_index:
-            self.test_starting_index + self.context_length
+            test_starting_index:(test_starting_index + self.context_length)
         ].to_numpy()
 
         return traffic_context
