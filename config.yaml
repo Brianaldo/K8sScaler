@@ -13,7 +13,7 @@ modules:
     test:
       is_test: true
       data_path: "data/traffic.csv"
-      starting_index: 5325
+      starting_index: 4320
 
   latency_predictor_model:
     model_path: "models/latency_predictor_model/v1"
