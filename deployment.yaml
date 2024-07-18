@@ -137,15 +137,15 @@ spec:
             - name: k8s-scaler-config-volume
               mountPath: /app/config.yaml
               subPath: config.yaml
+          resources:
+            requests:
+              cpu: "500m"
+            limits:
+              cpu: "500m"
       volumes:
         - name: k8s-scaler-config-volume
           configMap:
             name: k8s-scaler-config
-      resources:
-        requests:
-          cpu: "500m"
-        limits:
-          cpu: "500m"
 
 ---
 apiVersion: monitoring.coreos.com/v1
