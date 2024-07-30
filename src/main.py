@@ -36,7 +36,7 @@ handler = logging.StreamHandler()
 handler.setFormatter(formatter)
 
 
-logger = logging.getLogger('SYSTEM')
+logger = logging.getLogger()
 logger.addHandler(handler)
 logger.setLevel(logging.INFO)
 
