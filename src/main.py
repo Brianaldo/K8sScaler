@@ -10,12 +10,35 @@ from ResourceManager import ResourceManager
 from TrafficForecasterModel import TrafficForecasterModel
 
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='[%(asctime)s][%(levelname)s][%(name)s] %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
+class ColoredFormatter(logging.Formatter):
+    COLOR_CODES = {
+        logging.DEBUG: "\033[94m",     # Blue
+        logging.INFO: "\033[92m",      # Green
+        logging.WARNING: "\033[93m",   # Yellow
+        logging.ERROR: "\033[91m",     # Red
+        logging.CRITICAL: "\033[95m",  # Magenta
+    }
+    RESET_CODE = "\033[0m"
+
+    def format(self, record):
+        levelname = record.levelname
+        log_color = self.COLOR_CODES.get(record.levelno, self.RESET_CODE)
+        colored_levelname = f"{log_color}{levelname}{self.RESET_CODE}"
+        record.levelname = colored_levelname
+        return super().format(record)
+
+
+# Set up root logger configuration
+formatter = ColoredFormatter(
+    '[%(asctime)s][%(levelname)s][%(name)s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S'
 )
-logger = logging.getLogger("SYSTEM")
+handler = logging.StreamHandler()
+handler.setFormatter(formatter)
+
+
+logger = logging.getLogger('SYSTEM')
+logger.addHandler(handler)
+logger.setLevel(logging.INFO)
 
 
 def load_config(file_path: str):
